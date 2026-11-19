@@ -441,42 +441,55 @@
       const key = makeStudentKey(rawName, rawGroup);
       const admin = isAdminCredentials(rawName, rawGroup);
 
-      if (!admin) {
-        regBtn.disabled = true;
-        regBtn.textContent = "Проверка...";
+      // Для администратора всегда открываем свободный доступ без проверки прошлых записей
+      if (admin) {
+        localStorage.removeItem(STORAGE_ACTIVE_KEY);
+        currentStudent = {
+          key,
+          fullName: rawName,
+          group: rawGroup,
+          registeredAt: new Date().toISOString(),
+          prize: null
+        };
+        openGameScreen();
+        setSpinButtonReady("Крутить колесо");
+        return;
+      }
 
-        const map = getPlayedMap();
-        if (map[key] && map[key].prize) {
-          currentStudent = map[key];
-          regBtn.disabled = false;
-          regBtn.textContent = "Зарегистрироваться";
-          openGameScreen();
-          lockSpinButton("Попытка уже использована");
-          showResultModal(currentStudent.prize, true);
-          return;
-        }
+      regBtn.disabled = true;
+      regBtn.textContent = "Проверка...";
 
-        const sheetRecord = await checkStudentInSheet(key);
+      const map = getPlayedMap();
+      if (map[key] && map[key].prize) {
+        currentStudent = map[key];
         regBtn.disabled = false;
         regBtn.textContent = "Зарегистрироваться";
+        openGameScreen();
+        lockSpinButton("Попытка уже использована");
+        showResultModal(currentStudent.prize, true);
+        return;
+      }
 
-        if (sheetRecord && sheetRecord.exists) {
-          const matchedPrize = prizes.find(p => p.text === sheetRecord.prize) || {
-            text: sheetRecord.prize,
-            icon: "gift.png"
-          };
-          currentStudent = {
-            key,
-            fullName: sheetRecord.fullName || rawName,
-            group: sheetRecord.group || rawGroup,
-            prize: matchedPrize
-          };
-          savePlayedRecord(currentStudent);
-          openGameScreen();
-          lockSpinButton("Попытка уже использована");
-          showResultModal(currentStudent.prize, true);
-          return;
-        }
+      const sheetRecord = await checkStudentInSheet(key);
+      regBtn.disabled = false;
+      regBtn.textContent = "Зарегистрироваться";
+
+      if (sheetRecord && sheetRecord.exists) {
+        const matchedPrize = prizes.find(p => p.text === sheetRecord.prize) || {
+          text: sheetRecord.prize,
+          icon: "gift.png"
+        };
+        currentStudent = {
+          key,
+          fullName: sheetRecord.fullName || rawName,
+          group: sheetRecord.group || rawGroup,
+          prize: matchedPrize
+        };
+        savePlayedRecord(currentStudent);
+        openGameScreen();
+        lockSpinButton("Попытка уже использована");
+        showResultModal(currentStudent.prize, true);
+        return;
       }
 
       currentStudent = {
@@ -557,7 +570,9 @@
 
       currentStudent.prize = prize;
       currentStudent.spunAt = new Date().toISOString();
-      savePlayedRecord(currentStudent);
+      if (!admin) {
+        savePlayedRecord(currentStudent);
+      }
       sendResultToSheet(currentStudent);
 
       const wheel = document.getElementById("wheel");
