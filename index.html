@@ -54,6 +54,18 @@
       margin-bottom: 22px;
     }
 
+    .test-banner {
+      display: none;
+      margin-bottom: 14px;
+      padding: 6px 14px;
+      border-radius: 50px;
+      background: rgba(255, 193, 7, 0.22);
+      border: 1px solid rgba(255, 213, 79, 0.6);
+      color: #ffe082;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
     .input-group {
       margin-bottom: 16px;
       text-align: left;
@@ -140,6 +152,23 @@
       filter: grayscale(0.3);
     }
 
+    .secondary-btn {
+      margin-top: 10px;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      border-radius: 50px;
+      padding: 10px 18px;
+      color: #cceeff;
+      font-size: 13px;
+      cursor: pointer;
+      transition: 0.2s ease;
+    }
+
+    .secondary-btn:hover {
+      background: rgba(255, 255, 255, 0.16);
+      color: #fff;
+    }
+
     .game-container {
       display: none;
       flex-direction: column;
@@ -152,7 +181,7 @@
       background: rgba(6, 21, 45, 0.72);
       padding: 8px 18px;
       border-radius: 50px;
-      margin-bottom: 20px;
+      margin-bottom: 14px;
       border: 1px solid rgba(255, 255, 255, 0.2);
       color: #d8f3ff;
       text-align: center;
@@ -162,7 +191,7 @@
       position: relative;
       width: min(440px, 84vw);
       height: min(440px, 84vw);
-      margin-bottom: 26px;
+      margin-bottom: 24px;
       filter: drop-shadow(0 15px 35px rgba(0, 0, 0, 0.6));
     }
 
@@ -237,14 +266,22 @@
       line-height: 1.5;
       margin-bottom: 22px;
     }
+
+    .modal-actions {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+    }
   </style>
 </head>
 <body>
 
   <!-- Экран регистрации -->
   <div class="glass-card" id="regCard">
+    <div class="test-banner" id="regTestBanner">РЕЖИМ ТЕСТИРОВАНИЯ: ограничение на 1 попытку снято</div>
     <h2>Новогодняя Фортуна</h2>
-    <p class="subtitle">Укажите ФИО и группу. Поучаствовать можно только один раз.</p>
+    <p class="subtitle">Укажите ФИО и группу для участия в розыгрыше.</p>
     <form id="regForm" onsubmit="handleRegister(event)">
       <div class="input-group">
         <label for="fullName">ФИО</label>
@@ -261,12 +298,14 @@
 
   <!-- Игровой экран -->
   <div class="game-container" id="gameZone">
+    <div class="test-banner" id="gameTestBanner">ТЕСТОВЫЙ РЕЖИМ: можно крутить повторно и менять участника</div>
     <div class="user-badge" id="userBadge"></div>
     <div class="wheel-wrapper">
       <img src="pointer.png" class="pointer" alt="Стрелка">
       <div class="wheel" id="wheel"></div>
     </div>
     <button class="glass-btn" id="spinBtn" onclick="spinWheel()" style="max-width: 260px;">Крутить колесо</button>
+    <button type="button" class="secondary-btn" id="changeUserBtn" onclick="backToRegistration()">Сменить ФИО / группу</button>
   </div>
 
   <!-- Модальное окно результата -->
@@ -276,24 +315,24 @@
       <img src="gift.png" class="modal-gift-icon" id="giftIcon" alt="Подарок">
       <h1 id="giftTitle"></h1>
       <p id="giftDesc"></p>
-      <button class="glass-btn" onclick="closeModal()" style="max-width: 200px; margin: 0 auto;">Закрыть</button>
+      <div class="modal-actions">
+        <button class="glass-btn" onclick="closeModal()" style="max-width: 200px;">Закрыть</button>
+        <button type="button" class="secondary-btn" id="testSpinAgainBtn" onclick="closeAndSpinAgain()" style="display: none;">
+          Крутить ещё раз (тест)
+        </button>
+      </div>
     </div>
   </div>
 
   <script>
-    // Вставьте сюда URL развёрнутого веб-приложения Google Apps Script
+    // Временно включён тестовый режим: ограничение на 1 попытку отключено
+    const TEST_MODE = true;
+
     const SHEET_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbx9q0KNvMM_0esIgzSNo8uwrHkn7gniupbGRFTqjBbfpJRs3zYWdXO3sJ7_yXXfcjM/exec";
 
     const STORAGE_ACTIVE_KEY = "ny_wheel_active_student_v1";
     const STORAGE_HISTORY_KEY = "ny_wheel_played_keys_v1";
 
-    // Вероятности подарков:
-    // С Новым годом! — 35%
-    // +1 балл к рейтингу — 26%
-    // +1 балл к защите лаб. работы — 22%
-    // +5 баллов к рейтингу — 10%
-    // Защита любой лаб. работы — 5%
-    // Зачёт автоматом — 2%
     const prizes = [
       { id: "congrats", text: "С Новым годом!", weight: 35, icon: "gift.png", minAngle: 300, maxAngle: 360 },
       { id: "plus1_rating", text: "+1 балл к рейтингу", weight: 26, icon: "star.png", minAngle: 240, maxAngle: 300 },
@@ -304,7 +343,16 @@
     ];
 
     let currentStudent = null;
+    let currentRotation = 0;
     let isSpinning = false;
+
+    function applyTestModeUI() {
+      if (!TEST_MODE) return;
+      document.getElementById("regTestBanner").style.display = "inline-block";
+      document.getElementById("gameTestBanner").style.display = "inline-block";
+      document.getElementById("changeUserBtn").style.display = "inline-block";
+      document.getElementById("testSpinAgainBtn").style.display = "inline-block";
+    }
 
     function normalizeText(str) {
       return str
@@ -327,6 +375,7 @@
     }
 
     function savePlayedRecord(student) {
+      if (TEST_MODE) return;
       const map = getPlayedMap();
       map[student.key] = student;
       localStorage.setItem(STORAGE_HISTORY_KEY, JSON.stringify(map));
@@ -334,6 +383,9 @@
     }
 
     window.addEventListener("DOMContentLoaded", () => {
+      applyTestModeUI();
+      if (TEST_MODE) return;
+
       const activeRaw = localStorage.getItem(STORAGE_ACTIVE_KEY);
       if (!activeRaw) return;
 
@@ -383,40 +435,43 @@
       }
 
       const key = makeStudentKey(rawName, rawGroup);
-      regBtn.disabled = true;
-      regBtn.textContent = "Проверка...";
 
-      const map = getPlayedMap();
-      if (map[key] && map[key].prize) {
-        currentStudent = map[key];
+      if (!TEST_MODE) {
+        regBtn.disabled = true;
+        regBtn.textContent = "Проверка...";
+
+        const map = getPlayedMap();
+        if (map[key] && map[key].prize) {
+          currentStudent = map[key];
+          regBtn.disabled = false;
+          regBtn.textContent = "Зарегистрироваться";
+          openGameScreen();
+          lockSpinButton("Попытка уже использована");
+          showResultModal(currentStudent.prize, true);
+          return;
+        }
+
+        const sheetRecord = await checkStudentInSheet(key);
         regBtn.disabled = false;
         regBtn.textContent = "Зарегистрироваться";
-        openGameScreen();
-        lockSpinButton("Попытка уже использована");
-        showResultModal(currentStudent.prize, true);
-        return;
-      }
 
-      const sheetRecord = await checkStudentInSheet(key);
-      regBtn.disabled = false;
-      regBtn.textContent = "Зарегистрироваться";
-
-      if (sheetRecord && sheetRecord.exists) {
-        const matchedPrize = prizes.find(p => p.text === sheetRecord.prize) || {
-          text: sheetRecord.prize,
-          icon: "gift.png"
-        };
-        currentStudent = {
-          key,
-          fullName: sheetRecord.fullName || rawName,
-          group: sheetRecord.group || rawGroup,
-          prize: matchedPrize
-        };
-        savePlayedRecord(currentStudent);
-        openGameScreen();
-        lockSpinButton("Попытка уже использована");
-        showResultModal(currentStudent.prize, true);
-        return;
+        if (sheetRecord && sheetRecord.exists) {
+          const matchedPrize = prizes.find(p => p.text === sheetRecord.prize) || {
+            text: sheetRecord.prize,
+            icon: "gift.png"
+          };
+          currentStudent = {
+            key,
+            fullName: sheetRecord.fullName || rawName,
+            group: sheetRecord.group || rawGroup,
+            prize: matchedPrize
+          };
+          savePlayedRecord(currentStudent);
+          openGameScreen();
+          lockSpinButton("Попытка уже использована");
+          showResultModal(currentStudent.prize, true);
+          return;
+        }
       }
 
       currentStudent = {
@@ -428,6 +483,13 @@
       };
       savePlayedRecord(currentStudent);
       openGameScreen();
+      setSpinButtonReady("Крутить колесо");
+    }
+
+    function backToRegistration() {
+      if (isSpinning) return;
+      document.getElementById("gameZone").style.display = "none";
+      document.getElementById("regCard").style.display = "block";
     }
 
     function openGameScreen() {
@@ -435,6 +497,12 @@
       document.getElementById("gameZone").style.display = "flex";
       document.getElementById("userBadge").textContent =
         `${currentStudent.fullName} — группа ${currentStudent.group}`;
+    }
+
+    function setSpinButtonReady(label) {
+      const btn = document.getElementById("spinBtn");
+      btn.disabled = false;
+      btn.textContent = label;
     }
 
     function lockSpinButton(label) {
@@ -463,13 +531,15 @@
           key: student.key,
           fullName: student.fullName,
           group: student.group,
-          prize: student.prize ? student.prize.text : ""
+          prize: student.prize ? student.prize.text : "",
+          testMode: TEST_MODE
         })
       }).catch(() => {});
     }
 
     function spinWheel() {
-      if (isSpinning || !currentStudent || currentStudent.prize) return;
+      if (isSpinning || !currentStudent) return;
+      if (!TEST_MODE && currentStudent.prize) return;
 
       isSpinning = true;
       lockSpinButton("Вращение...");
@@ -477,7 +547,13 @@
       const prize = pickPrizeByWeight();
       const angleInSector = prize.minAngle + 5 + Math.random() * (prize.maxAngle - prize.minAngle - 10);
       const extraTurns = 5 + Math.floor(Math.random() * 3);
-      const totalDeg = extraTurns * 360 + (360 - angleInSector);
+
+      const currentMod = ((currentRotation % 360) + 360) % 360;
+      const desiredMod = (360 - angleInSector) % 360;
+      let delta = desiredMod - currentMod;
+      if (delta < 0) delta += 360;
+
+      currentRotation += extraTurns * 360 + delta;
 
       currentStudent.prize = prize;
       currentStudent.spunAt = new Date().toISOString();
@@ -485,11 +561,15 @@
       sendResultToSheet(currentStudent);
 
       const wheel = document.getElementById("wheel");
-      wheel.style.transform = `rotate(${totalDeg}deg)`;
+      wheel.style.transform = `rotate(${currentRotation}deg)`;
 
       setTimeout(() => {
         isSpinning = false;
-        lockSpinButton("Подарок получен");
+        if (TEST_MODE) {
+          setSpinButtonReady("Крутить колесо");
+        } else {
+          lockSpinButton("Подарок получен");
+        }
         showResultModal(prize, false);
       }, 6000);
     }
@@ -514,6 +594,13 @@
       setTimeout(() => {
         overlay.style.display = "none";
       }, 300);
+    }
+
+    function closeAndSpinAgain() {
+      closeModal();
+      if (TEST_MODE && !isSpinning) {
+        setTimeout(() => spinWheel(), 320);
+      }
     }
   </script>
 </body>
