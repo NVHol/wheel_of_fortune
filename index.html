@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Новогоднее Колесо Фортуны</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+
+    body, html {
+      width: 100%;
+      min-height: 100%;
+      overflow-x: hidden;
+      background: #06152d url('bg.jpg') no-repeat center center fixed;
+      background-size: cover;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      color: #fff;
+      padding: 16px;
+    }
+
+    .glass-card {
+      background: rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(15px);
+      -webkit-backdrop-filter: blur(15px);
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      border-radius: 24px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4),
+                  inset 0 0 12px rgba(255, 255, 255, 0.12);
+      padding: 30px;
+      width: 100%;
+      max-width: 450px;
+      text-align: center;
+      z-index: 10;
+    }
+
+    h2 {
+      font-size: 24px;
+      margin-bottom: 12px;
+      background: linear-gradient(45deg, #fff, #b9e9ff);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .subtitle {
+      font-size: 14px;
+      color: #cceeff;
+      margin-bottom: 22px;
+    }
+
+    .input-group {
+      margin-bottom: 16px;
+      text-align: left;
+    }
+
+    label {
+      display: block;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 6px;
+      color: #b9e9ff;
+    }
+
+    input {
+      width: 100%;
+      padding: 13px 18px;
+      border-radius: 50px;
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      background: rgba(255, 255, 255, 0.08);
+      color: #fff;
+      font-size: 15px;
+      outline: none;
+      transition: 0.25s ease;
+    }
+
+    input::placeholder {
+      color: rgba(255, 255, 255, 0.55);
+    }
+
+    input:focus {
+      border-color: #00f0ff;
+      box-shadow: 0 0 15px rgba(0, 240, 255, 0.3);
+      background: rgba(255, 255, 255, 0.14);
+    }
+
+    .error-msg {
+      color: #ff8a80;
+      font-size: 13px;
+      margin-bottom: 14px;
+      min-height: 18px;
+    }
+
+    .glass-btn {
+      position: relative;
+      width: 100%;
+      padding: 15px 22px;
+      border: 2px solid rgba(255, 255, 255, 0.35);
+      border-radius: 50px;
+      cursor: pointer;
+      font-weight: 700;
+      font-size: 15px;
+      text-transform: uppercase;
+      letter-spacing: 1.2px;
+      color: #ffffff;
+      background: rgba(255, 255, 255, 0.12);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25),
+                  inset 0 0 8px rgba(255, 255, 255, 0.2);
+      overflow: hidden;
+      transition: all 0.25s ease;
+    }
+
+    .glass-btn::before {
+      content: '';
+      position: absolute;
+      inset: 2px;
+      background: linear-gradient(135deg, #00f0ff, #00a896);
+      border-radius: 50px;
+      z-index: -1;
+      opacity: 0.88;
+      transition: 0.25s ease;
+    }
+
+    .glass-btn:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 25px rgba(0, 240, 255, 0.4);
+    }
+
+    .glass-btn:disabled {
+      cursor: not-allowed;
+      opacity: 0.55;
+      filter: grayscale(0.3);
+    }
+
+    .game-container {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      z-index: 5;
+    }
+
+    .user-badge {
+      font-size: 14px;
+      background: rgba(6, 21, 45, 0.72);
+      padding: 8px 18px;
+      border-radius: 50px;
+      margin-bottom: 20px;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: #d8f3ff;
+      text-align: center;
+    }
+
+    .wheel-wrapper {
+      position: relative;
+      width: min(440px, 84vw);
+      height: min(440px, 84vw);
+      margin-bottom: 26px;
+      filter: drop-shadow(0 15px 35px rgba(0, 0, 0, 0.6));
+    }
+
+    .wheel {
+      width: 100%;
+      height: 100%;
+      background: url('wheel.png') no-repeat center center;
+      background-size: contain;
+      transition: transform 6s cubic-bezier(0.12, 0.82, 0.14, 1);
+    }
+
+    .pointer {
+      position: absolute;
+      top: -26px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 68px;
+      height: auto;
+      z-index: 10;
+      filter: drop-shadow(0 6px 10px rgba(0, 0, 0, 0.45));
+    }
+
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(6, 21, 45, 0.82);
+      backdrop-filter: blur(10px);
+      z-index: 100;
+      justify-content: center;
+      align-items: center;
+      padding: 16px;
+    }
+
+    .modal {
+      background: rgba(255, 255, 255, 0.12);
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      backdrop-filter: blur(20px);
+      border-radius: 28px;
+      padding: 34px 26px;
+      max-width: 480px;
+      width: 100%;
+      text-align: center;
+      transform: scale(0.8);
+      opacity: 0;
+      transition: all 0.35s ease;
+    }
+
+    .modal.show {
+      transform: scale(1);
+      opacity: 1;
+    }
+
+    .modal-gift-icon {
+      width: 160px;
+      height: 160px;
+      object-fit: contain;
+      margin: 16px auto;
+      filter: drop-shadow(0 10px 20px rgba(0, 0, 0, 0.35));
+    }
+
+    .modal h1 {
+      font-size: 26px;
+      color: #ffeb3b;
+      margin-bottom: 12px;
+      text-shadow: 0 0 12px rgba(255, 235, 59, 0.35);
+    }
+
+    .modal p {
+      font-size: 15px;
+      color: #e6f9ff;
+      line-height: 1.5;
+      margin-bottom: 22px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Экран регистрации -->
+  <div class="glass-card" id="regCard">
+    <h2>Новогодняя Фортуна</h2>
+    <p class="subtitle">Укажите ФИО и группу. Поучаствовать можно только один раз.</p>
+    <form id="regForm" onsubmit="handleRegister(event)">
+      <div class="input-group">
+        <label for="fullName">ФИО</label>
+        <input type="text" id="fullName" placeholder="Иванов Иван Иванович" required>
+      </div>
+      <div class="input-group">
+        <label for="groupName">Группа</label>
+        <input type="text" id="groupName" placeholder="НТ-251" required>
+      </div>
+      <div class="error-msg" id="errorMsg"></div>
+      <button type="submit" class="glass-btn" id="regBtn">Зарегистрироваться</button>
+    </form>
+  </div>
+
+  <!-- Игровой экран -->
+  <div class="game-container" id="gameZone">
+    <div class="user-badge" id="userBadge"></div>
+    <div class="wheel-wrapper">
+      <img src="pointer.png" class="pointer" alt="Стрелка">
+      <div class="wheel" id="wheel"></div>
+    </div>
+    <button class="glass-btn" id="spinBtn" onclick="spinWheel()" style="max-width: 260px;">Крутить колесо</button>
+  </div>
+
+  <!-- Модальное окно результата -->
+  <div class="modal-overlay" id="modalOverlay">
+    <div class="modal" id="resultModal">
+      <h2>Ваш подарок</h2>
+      <img src="gift.png" class="modal-gift-icon" id="giftIcon" alt="Подарок">
+      <h1 id="giftTitle"></h1>
+      <p id="giftDesc"></p>
+      <button class="glass-btn" onclick="closeModal()" style="max-width: 200px; margin: 0 auto;">Закрыть</button>
+    </div>
+  </div>
+
+  <script>
+    // Вставьте сюда URL развёрнутого веб-приложения Google Apps Script
+    const SHEET_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbx9q0KNvMM_0esIgzSNo8uwrHkn7gniupbGRFTqjBbfpJRs3zYWdXO3sJ7_yXXfcjM/exec";
+
+    const STORAGE_ACTIVE_KEY = "ny_wheel_active_student_v1";
+    const STORAGE_HISTORY_KEY = "ny_wheel_played_keys_v1";
+
+    // Вероятности подарков:
+    // С Новым годом! — 35%
+    // +1 балл к рейтингу — 26%
+    // +1 балл к защите лаб. работы — 22%
+    // +5 баллов к рейтингу — 10%
+    // Защита любой лаб. работы — 5%
+    // Зачёт автоматом — 2%
+    const prizes = [
+      { id: "congrats", text: "С Новым годом!", weight: 35, icon: "gift.png", minAngle: 300, maxAngle: 360 },
+      { id: "plus1_rating", text: "+1 балл к рейтингу", weight: 26, icon: "star.png", minAngle: 240, maxAngle: 300 },
+      { id: "plus1_lab", text: "+1 балл к защите лаб. работы", weight: 22, icon: "flask.png", minAngle: 180, maxAngle: 240 },
+      { id: "plus5_rating", text: "+5 баллов к рейтингу", weight: 10, icon: "trophy.png", minAngle: 120, maxAngle: 180 },
+      { id: "any_lab", text: "Защита любой лаб. работы", weight: 5, icon: "scroll.png", minAngle: 60, maxAngle: 120 },
+      { id: "credit", text: "Зачёт автоматом", weight: 2, icon: "gift.png", minAngle: 0, maxAngle: 60 }
+    ];
+
+    let currentStudent = null;
+    let isSpinning = false;
+
+    function normalizeText(str) {
+      return str
+        .toLowerCase()
+        .replace(/ё/g, "е")
+        .replace(/\s+/g, " ")
+        .trim();
+    }
+
+    function makeStudentKey(fullName, groupName) {
+      return `${normalizeText(groupName)}::${normalizeText(fullName)}`;
+    }
+
+    function getPlayedMap() {
+      try {
+        return JSON.parse(localStorage.getItem(STORAGE_HISTORY_KEY) || "{}");
+      } catch {
+        return {};
+      }
+    }
+
+    function savePlayedRecord(student) {
+      const map = getPlayedMap();
+      map[student.key] = student;
+      localStorage.setItem(STORAGE_HISTORY_KEY, JSON.stringify(map));
+      localStorage.setItem(STORAGE_ACTIVE_KEY, JSON.stringify(student));
+    }
+
+    window.addEventListener("DOMContentLoaded", () => {
+      const activeRaw = localStorage.getItem(STORAGE_ACTIVE_KEY);
+      if (!activeRaw) return;
+
+      try {
+        const saved = JSON.parse(activeRaw);
+        const map = getPlayedMap();
+        currentStudent = map[saved.key] || saved;
+        openGameScreen();
+
+        if (currentStudent.prize) {
+          lockSpinButton("Попытка уже использована");
+          showResultModal(currentStudent.prize, true);
+        }
+      } catch {
+        localStorage.removeItem(STORAGE_ACTIVE_KEY);
+      }
+    });
+
+    async function checkStudentInSheet(key) {
+      if (!SHEET_WEB_APP_URL) return null;
+      try {
+        const url = `${SHEET_WEB_APP_URL}?key=${encodeURIComponent(key)}`;
+        const resp = await fetch(url);
+        if (!resp.ok) return null;
+        return await resp.json();
+      } catch {
+        return null;
+      }
+    }
+
+    async function handleRegister(event) {
+      event.preventDefault();
+      const errorEl = document.getElementById("errorMsg");
+      const regBtn = document.getElementById("regBtn");
+      errorEl.textContent = "";
+
+      const rawName = document.getElementById("fullName").value.replace(/\s+/g, " ").trim();
+      const rawGroup = document.getElementById("groupName").value.replace(/\s+/g, " ").trim();
+
+      if (rawName.split(" ").filter(Boolean).length < 2) {
+        errorEl.textContent = "Введите фамилию и имя (желательно полностью ФИО).";
+        return;
+      }
+      if (rawGroup.length < 2) {
+        errorEl.textContent = "Укажите корректное название группы.";
+        return;
+      }
+
+      const key = makeStudentKey(rawName, rawGroup);
+      regBtn.disabled = true;
+      regBtn.textContent = "Проверка...";
+
+      const map = getPlayedMap();
+      if (map[key] && map[key].prize) {
+        currentStudent = map[key];
+        regBtn.disabled = false;
+        regBtn.textContent = "Зарегистрироваться";
+        openGameScreen();
+        lockSpinButton("Попытка уже использована");
+        showResultModal(currentStudent.prize, true);
+        return;
+      }
+
+      const sheetRecord = await checkStudentInSheet(key);
+      regBtn.disabled = false;
+      regBtn.textContent = "Зарегистрироваться";
+
+      if (sheetRecord && sheetRecord.exists) {
+        const matchedPrize = prizes.find(p => p.text === sheetRecord.prize) || {
+          text: sheetRecord.prize,
+          icon: "gift.png"
+        };
+        currentStudent = {
+          key,
+          fullName: sheetRecord.fullName || rawName,
+          group: sheetRecord.group || rawGroup,
+          prize: matchedPrize
+        };
+        savePlayedRecord(currentStudent);
+        openGameScreen();
+        lockSpinButton("Попытка уже использована");
+        showResultModal(currentStudent.prize, true);
+        return;
+      }
+
+      currentStudent = {
+        key,
+        fullName: rawName,
+        group: rawGroup,
+        registeredAt: new Date().toISOString(),
+        prize: null
+      };
+      savePlayedRecord(currentStudent);
+      openGameScreen();
+    }
+
+    function openGameScreen() {
+      document.getElementById("regCard").style.display = "none";
+      document.getElementById("gameZone").style.display = "flex";
+      document.getElementById("userBadge").textContent =
+        `${currentStudent.fullName} — группа ${currentStudent.group}`;
+    }
+
+    function lockSpinButton(label) {
+      const btn = document.getElementById("spinBtn");
+      btn.disabled = true;
+      btn.textContent = label;
+    }
+
+    function pickPrizeByWeight() {
+      const r = Math.random() * 100;
+      let acc = 0;
+      for (const item of prizes) {
+        acc += item.weight;
+        if (r <= acc) return item;
+      }
+      return prizes[0];
+    }
+
+    function sendResultToSheet(student) {
+      if (!SHEET_WEB_APP_URL) return;
+      fetch(SHEET_WEB_APP_URL, {
+        method: "POST",
+        mode: "no-cors",
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
+        body: JSON.stringify({
+          key: student.key,
+          fullName: student.fullName,
+          group: student.group,
+          prize: student.prize ? student.prize.text : ""
+        })
+      }).catch(() => {});
+    }
+
+    function spinWheel() {
+      if (isSpinning || !currentStudent || currentStudent.prize) return;
+
+      isSpinning = true;
+      lockSpinButton("Вращение...");
+
+      const prize = pickPrizeByWeight();
+      const angleInSector = prize.minAngle + 5 + Math.random() * (prize.maxAngle - prize.minAngle - 10);
+      const extraTurns = 5 + Math.floor(Math.random() * 3);
+      const totalDeg = extraTurns * 360 + (360 - angleInSector);
+
+      currentStudent.prize = prize;
+      currentStudent.spunAt = new Date().toISOString();
+      savePlayedRecord(currentStudent);
+      sendResultToSheet(currentStudent);
+
+      const wheel = document.getElementById("wheel");
+      wheel.style.transform = `rotate(${totalDeg}deg)`;
+
+      setTimeout(() => {
+        isSpinning = false;
+        lockSpinButton("Подарок получен");
+        showResultModal(prize, false);
+      }, 6000);
+    }
+
+    function showResultModal(prize, alreadyWon) {
+      document.getElementById("giftIcon").src = prize.icon;
+      document.getElementById("giftTitle").textContent = prize.text;
+      document.getElementById("giftDesc").textContent = alreadyWon
+        ? `Вы уже участвовали в розыгрыше. Ваш результат: «${prize.text}».`
+        : `Поздравляем! Ваш подарок: «${prize.text}». С наступающим Новым годом!`;
+
+      const overlay = document.getElementById("modalOverlay");
+      const modal = document.getElementById("resultModal");
+      overlay.style.display = "flex";
+      setTimeout(() => modal.classList.add("show"), 40);
+    }
+
+    function closeModal() {
+      const overlay = document.getElementById("modalOverlay");
+      const modal = document.getElementById("resultModal");
+      modal.classList.remove("show");
+      setTimeout(() => {
+        overlay.style.display = "none";
+      }, 300);
+    }
+  </script>
+</body>
+</html>
